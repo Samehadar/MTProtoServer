@@ -19,6 +19,7 @@ case class RestartServer() extends Event
 // Inside server messages
 case class CipherKeys(p: String, g: String, r: String)
 case class SessionManagerResponse(response: String)
+case class Users(users: List[String])
 
 
 object MyJsonProtocol extends SprayJsonSupport with DefaultJsonProtocol {
@@ -32,4 +33,5 @@ object MyJsonProtocol extends SprayJsonSupport with DefaultJsonProtocol {
 
   implicit val cipherKeysFormat = jsonFormat3(CipherKeys)
   implicit val sessionManagerResponseFormat = jsonFormat1(SessionManagerResponse)
+  implicit val usersFormat = jsonFormat1(Users)
 }

@@ -63,6 +63,8 @@ class TcpHandler(connection: ActorRef, session: ActorRef, sessionManager: ActorR
           json.convertTo[Login]
         case "logout" =>
           json.convertTo[Logout]
+        case "startChat" =>
+          json.convertTo[StartChatWith]
         case "getConnectedUsers" =>
           json.convertTo[GetConnectedUsers]
         case "getKeys" =>
