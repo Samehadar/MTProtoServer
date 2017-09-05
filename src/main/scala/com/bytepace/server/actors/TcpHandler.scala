@@ -8,6 +8,7 @@ import akka.util.{ByteString, Timeout}
 import com.bytepace.server.messages._
 import spray.json._
 
+import MyJsonProtocol._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -38,7 +39,7 @@ class TcpHandler(connection: ActorRef, session: ActorRef, sessionManager: ActorR
         .mapTo[SessionManagerResponse]
         .foreach{ response =>
           log.info("Response from SessionManager: " + response.response)
-          session ! Send(ByteString(response.response).toArray)
+          session ! Send(ByteString(response.toJson.toString).toArray)
         }
 
     case Logout(username) =>
@@ -46,14 +47,13 @@ class TcpHandler(connection: ActorRef, session: ActorRef, sessionManager: ActorR
         .mapTo[SessionManagerResponse]
         .foreach{ response =>
           log.info("Response from SessionManager: " + response.response)
-          session ! Send(ByteString(response.response).toArray)
+          session ! Send(ByteString(response.toJson.toString).toArray)
           connection ! Close
         }
   }
 
   // ----- actions -----
   def receiveData(data: ByteString): Unit = {
-    import MyJsonProtocol._
     //Распаковываем сообщение, отправляем по назначению
     val json = data.utf8String.parseJson.asJsObject
 
