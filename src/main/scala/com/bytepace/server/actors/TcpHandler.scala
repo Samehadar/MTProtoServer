@@ -1,14 +1,12 @@
 package com.bytepace.server.actors
 
-import akka.pattern.ask
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.io.Tcp
-import akka.io.Tcp.{PeerClosed, Received, Write}
+import akka.io.Tcp.{PeerClosed, Received}
 import akka.util.{ByteString, Timeout}
 import com.bytepace.server.messages._
 import spray.json._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 /**
@@ -16,7 +14,14 @@ import scala.concurrent.duration._
   */
 class TcpHandler(connection: ActorRef, session: ActorRef) extends Actor with ActorLogging {
 
-  def receive = {
+  // sign death pact
+  context watch connection
+  // watch so we can Close
+  context watch session
+
+  private val pipeline = context.actorOf(Pipeline.props, "pipeline")
+
+  def receive: Receive = {
     case Received(data) =>
       receiveData(data)
     case PeerClosed     => context stop self
@@ -24,8 +29,6 @@ class TcpHandler(connection: ActorRef, session: ActorRef) extends Actor with Act
     case mes @ Send(data) =>
       log.info("Response from pipelineActor: " + ByteString(data).decodeString("US-ASCII"))
       session ! mes
-
-//    case response @ Send(data) => session forward response
   }
 
   // ----- actions -----
@@ -53,7 +56,7 @@ class TcpHandler(connection: ActorRef, session: ActorRef) extends Actor with Act
     log.info("Event type is " + event.head.toString)
     implicit val timeout = Timeout(5.second)
 
-    context.actorOf(Pipeline.props, "pipeline") ! event.head
+    pipeline ! event.head
   }
 }
 

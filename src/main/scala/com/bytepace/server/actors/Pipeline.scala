@@ -12,7 +12,10 @@ import spray.json._
   */
 class Pipeline extends Actor with ActorLogging {
 
-  def receive = {
+  // Context actors
+  private val cipherActor = context.actorOf(Cipher.props, "cipher")
+
+  def receive: Receive = {
     //from TcpHandler messages
     case Login(user) =>
 
@@ -20,7 +23,7 @@ class Pipeline extends Actor with ActorLogging {
 
     case mes @ GetKeys() =>
       log.info("Receive message " + mes)
-      context.actorOf(Cipher.props, "cipher") ! GenerateKeys
+      cipherActor ! GenerateKeys
 
     case SendMessage(from, to, mes) =>
 
