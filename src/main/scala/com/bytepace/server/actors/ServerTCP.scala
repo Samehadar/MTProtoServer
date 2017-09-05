@@ -12,7 +12,9 @@ import akka.io.{IO, Tcp}
 class ServerTCP(address: String, port: Int) extends Actor with ActorLogging {
   var idCounter = 0L
 
-  override def preStart() {
+  private val sessionManager = context.actorOf(SessionManager.props, "sessionManager")
+
+  override def preStart(): Unit = {
     log.info( "Starting tcp net server" )
 
     import context.system
@@ -39,7 +41,7 @@ class ServerTCP(address: String, port: Int) extends Actor with ActorLogging {
     val sessionActorProps = Props( new Session( idCounter, connection, remote, local ))
     val session = context.actorOf(sessionActorProps , remote.getHostName + ":" + remote.getPort)
 
-    val tcpHandler = context.actorOf(TcpHandler.props(connection, session), "TCPHandler")
+    val tcpHandler = context.actorOf(TcpHandler.props(connection, session, sessionManager), "TCPHandler")
 
     connection ! Register(tcpHandler)
   }

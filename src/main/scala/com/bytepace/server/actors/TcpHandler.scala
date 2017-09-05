@@ -1,18 +1,21 @@
 package com.bytepace.server.actors
 
+import akka.pattern.ask
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.io.Tcp
-import akka.io.Tcp.{PeerClosed, Received}
+import akka.io.Tcp.{Close, PeerClosed, Received}
 import akka.util.{ByteString, Timeout}
 import com.bytepace.server.messages._
 import spray.json._
 
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Created by vital on 28.08.2017.
   */
-class TcpHandler(connection: ActorRef, session: ActorRef) extends Actor with ActorLogging {
+class TcpHandler(connection: ActorRef, session: ActorRef, sessionManager: ActorRef) extends Actor with ActorLogging {
+  implicit val timeout = Timeout(5.second)
 
   // sign death pact
   context watch connection
@@ -29,6 +32,23 @@ class TcpHandler(connection: ActorRef, session: ActorRef) extends Actor with Act
     case mes @ Send(data) =>
       log.info("Response from pipelineActor: " + ByteString(data).decodeString("US-ASCII"))
       session ! mes
+
+    case Login(username) =>
+      (sessionManager ? AddSession(username, self))
+        .mapTo[SessionManagerResponse]
+        .foreach{ response =>
+          log.info("Response from SessionManager: " + response.response)
+          session ! Send(ByteString(response.response).toArray)
+        }
+
+    case Logout(username) =>
+      (sessionManager ? RemoveSession(username))
+        .mapTo[SessionManagerResponse]
+        .foreach{ response =>
+          log.info("Response from SessionManager: " + response.response)
+          session ! Send(ByteString(response.response).toArray)
+          connection ! Close
+        }
   }
 
   // ----- actions -----
@@ -54,7 +74,6 @@ class TcpHandler(connection: ActorRef, session: ActorRef) extends Actor with Act
       }
     }
     log.info("Event type is " + event.head.toString)
-    implicit val timeout = Timeout(5.second)
 
     pipeline ! event.head
   }
@@ -62,5 +81,5 @@ class TcpHandler(connection: ActorRef, session: ActorRef) extends Actor with Act
 
 object TcpHandler {
   //todo:: remove connection if it's unused
-  def props(connection: ActorRef, session: ActorRef): Props = Props(new TcpHandler(connection, session))
+  def props(connection: ActorRef, session: ActorRef, sessionManager: ActorRef): Props = Props(new TcpHandler(connection, session, sessionManager))
 }

@@ -38,7 +38,7 @@ class Session(val id: Long,
 
 
   def sendData(data: Array[Byte] ) {
-    log.info("Response: " + data.toString)
+    log.info("Response: " + ByteString(data).decodeString("US-ASCII"))
     val msg: ByteString = ByteString(data) // Упаковываем сообщение
     connect ! Write( msg ) // отправляем
   }

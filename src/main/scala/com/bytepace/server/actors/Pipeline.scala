@@ -17,9 +17,11 @@ class Pipeline extends Actor with ActorLogging {
 
   def receive: Receive = {
     //from TcpHandler messages
-    case Login(user) =>
+    case message @ Login(user) =>
+      sender forward message
 
-    case Logout(user) =>
+    case message @ Logout(user) =>
+      sender forward message
 
     case mes @ GetKeys() =>
       log.info("Receive message " + mes)
