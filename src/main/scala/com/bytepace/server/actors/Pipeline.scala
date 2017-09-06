@@ -1,19 +1,19 @@
 package com.bytepace.server.actors
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.util.ByteString
-import com.bytepace.server.actors.cipher.Cipher
+import akka.actor.{Actor, ActorLogging, Props}
+import akka.pattern.ask
+import akka.util.{ByteString, Timeout}
 import com.bytepace.server.messages.MyJsonProtocol._
 import com.bytepace.server.messages._
 import spray.json._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 /**
   * Created by vital on 28.08.2017.
   */
 class Pipeline extends Actor with ActorLogging {
-
-  // Context actors
-  private val cipherActor = context.actorOf(Cipher.props, "cipher")
 
   def receive: Receive = {
     //from TcpHandler messages
@@ -24,11 +24,20 @@ class Pipeline extends Actor with ActorLogging {
       sender forward message
 
     case StartChatWith(friendName, openKey) =>
-      //todo::
+      implicit val timeout = Timeout(5.second)
+      (context.actorSelection("akka://server/user/front/sessionManager") ? GetSession(friendName))
+        .mapTo[UserSession]
+        .foreach{ userSession =>
+          userSession.session.foreach(_ ! Send(ByteString(
+            ChatRequest("startChatWith", friendName, openKey
+            ).toJson.toString).toArray)
+          )
+        }
 
     case msg @ GetKeys() =>
       log.info("Receive message " + msg)
-      cipherActor ! GenerateKeys
+      sender forward msg
+      context.actorSelection("akka://server/user/front/keyStore") ! GenerateKeys
 
     case SendMessage(from, to, msg) =>
     //todo::
@@ -40,13 +49,11 @@ class Pipeline extends Actor with ActorLogging {
     case RestartServer() =>
     //todo::
 
-
-
-    case keys @ CipherKeys(p,g,r) =>
+    case keys @ CipherKeys(_, p,g,r) =>
       log.info("Receive message " + keys)
       context.parent ! Send(ByteString(keys.toJson.toString).toArray)
 
-    case users @ Users(_) =>
+    case users @ Users(_, _) =>
       context.parent ! Send(ByteString(users.toJson.toString).toArray)
 
   }

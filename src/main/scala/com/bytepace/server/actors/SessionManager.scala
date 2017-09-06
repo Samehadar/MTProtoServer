@@ -14,26 +14,28 @@ class SessionManager extends Actor with ActorLogging {
 
     case AddSession(username, actorHandler) =>
       sessions += (username -> actorHandler)
-      printSessions
-      sender ! SessionManagerResponse("Session " + actorHandler.path + " has been added")
+      printSessions()
+      log.info("Session " + actorHandler.path + " has been added")
+      sender ! SessionManagerResponse("login", "ok")
 
     case RemoveSession(username) =>
       sessions = sessions.filterNot(_._1 == username)
-      printSessions
-      sender ! SessionManagerResponse("Session for user [" + username + "] has been removed")
+      printSessions()
+      log.info("Session for user [" + username + "] has been removed")
+      sender ! SessionManagerResponse("logout", "ok")
 
     case GetSession(username) =>
       val session = sessions get username
       sender ! session
 
     case GetConnectedUsers() =>
-      printSessions
-      sender ! Users(sessions.keys.toList)
+      printSessions()
+      sender ! Users("getConnectedUsers", sessions.keys.toList)
 
     case _ =>
   }
 
-  private def printSessions = {
+  private def printSessions() = {
     println("Map: ")
     println(sessions.mkString("\n"))
   }

@@ -5,6 +5,7 @@ import java.net.InetSocketAddress
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
+import com.bytepace.server.actors.cipher.KeyGenerator
 
 /**
   * Created by vital on 28.08.2017.
@@ -13,6 +14,7 @@ class ServerTCP(address: String, port: Int) extends Actor with ActorLogging {
   var idCounter = 0L
 
   private val sessionManager = context.actorOf(SessionManager.props, "sessionManager")
+  private val keyStore = context.actorOf(KeyGenerator.props, "keyStore")
 
   override def preStart(): Unit = {
     log.info( "Starting tcp net server" )
