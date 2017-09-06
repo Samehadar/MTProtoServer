@@ -34,12 +34,12 @@ class TcpHandler(connection: ActorRef, session: ActorRef, sessionManager: ActorR
       log.info("Response from pipelineActor: " + ByteString(data).decodeString("US-ASCII"))
       session ! mes
 
-    case Login(username) =>
+    case keys @ CipherKeys(username, p, g, r) =>
       (sessionManager ? AddSession(username, self))
         .mapTo[SessionManagerResponse]
         .foreach{ response =>
           log.info("Response from SessionManager: " + response.response)
-          session ! Send(ByteString(response.toJson.toString).toArray)
+          session ! Send(ByteString(LoginResponse("login", response.response, p, g, r).toJson.toString).toArray)
         }
 
     case Logout(username) =>
@@ -67,8 +67,6 @@ class TcpHandler(connection: ActorRef, session: ActorRef, sessionManager: ActorR
           json.convertTo[StartChatWith]
         case "getConnectedUsers" =>
           json.convertTo[GetConnectedUsers]
-        case "getKeys" =>
-          json.convertTo[GetKeys]
         case "sendMessage" =>
           json.convertTo[SendMessage]
         case "restartServer" =>

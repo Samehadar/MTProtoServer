@@ -7,20 +7,42 @@ import akka.actor.{Actor, ActorLogging, Props}
 import com.bytepace.server.messages.{CipherKeys, GenerateKeys}
 import com.bytepace.server.utils.ExhaustibleStream
 
-/**
-  * Created by vital on 28.08.2017.
-  */
+class KeyGenerator() extends Actor with ActorLogging {
+
+  private val keyStore = Key.generateKeyStream()
+
+  override def receive: Receive = {
+    case GenerateKeys(username) =>
+      log.info("Receive GenerateKeys message")
+      sender() ! generateKeys(username)
+  }
+
+  def generateKeys(username: String): CipherKeys = {
+    //todo:: add generating key when keyStore is empty
+    val key = keyStore.drawNextOne()
+
+    CipherKeys(username, key.generator.toString, key.server.toByteArray.mkString(""), key.prime.toByteArray.mkString(""))
+  }
+}
+
+object KeyGenerator {
+  def props: Props = Props(new KeyGenerator)
+}
+
+
+
 case class Key(rnd: Random) {
-  val generator: Int = 3
+  val generator: Int = 3 + rnd.nextInt(5)
   val server: BigInteger = new BigInteger(2047, rnd)
   val prime: BigInteger = new BigInteger(2048, 99, rnd)// =================== todo:: change to generate security prime number
 
   override def toString: String = {
     "g = " + generator +
-    "\nserver key = " + server +
-    "\nprime = " + prime + '\n'
+      "\nserver key = " + server +
+      "\nprime = " + prime + '\n'
   }
 }
+
 
 object Key {
   val rnd = new Random()
@@ -38,25 +60,4 @@ object Key {
     }
     ExhaustibleStream[Key](keyStore: _*)
   }
-}
-
-class KeyGenerator() extends Actor with ActorLogging {
-
-  private val keyStore = Key.generateKeyStream()
-
-  override def receive: Receive = {
-    case GenerateKeys =>
-      log.info("Receive GenerateKeys message")
-      sender() ! generateKeys()
-  }
-
-  def generateKeys(): CipherKeys = {
-    val key = keyStore.drawNextOne()
-
-    CipherKeys("getKeys", key.generator.toString, key.server.toByteArray.mkString(""), key.prime.toByteArray.mkString(""))
-  }
-}
-
-object KeyGenerator {
-  def props: Props = Props(new KeyGenerator)
 }
